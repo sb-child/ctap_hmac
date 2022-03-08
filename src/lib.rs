@@ -192,10 +192,14 @@ pub struct FidoCredentialRequest<'a> {
     /// user display name
     #[builder(default)]
     user_display_name: Option<&'a str>,
+    /// tokens to disallow, operation errors if authenticator already contains one of these.
     #[builder(default = "&[]")]
     exclude_list: &'a [&'a FidoCredential],
+    /// Client data contextual binding. Authenticator Data created will be specific to this
+    /// binding, and is checked by the authenticator on assertion request.
     #[builder(default = "&[0u8; 32]")]
     client_data_hash: &'a [u8],
+    /// parameters to influence the operation, authenticator specific
     #[builder(default)]
     extension_data: BTreeMap<&'a str, &'a cbor_codec::value::Value>,
 }
@@ -218,19 +222,25 @@ impl<'a> FidoCredentialRequest<'a> {
 #[builder(setter(into))]
 #[builder(pattern = "owned")]
 pub struct FidoAssertionRequest<'a, 'b> {
+    /// Require user presence?
     #[builder(default)]
     up: bool,
+    /// Require resident key?
     #[builder(default)]
     rk: bool,
+    /// Require user verification?
     #[builder(default)]
     uv: bool,
     /// The Relying Party ID provided by the platform when this key was generated.
     rp_id: &'a str,
+    /// Explicit allow list, if non-empty then only these credentials must be used.
     credentials: &'a [&'a FidoCredential],
     #[builder(default = "&[]")]
     exclude_list: &'a [&'a FidoCredential],
+    /// Client data contextual binding, as it was provided during credential request.
     #[builder(default = "&[0u8; 32]")]
     client_data_hash: &'a [u8],
+    /// parameters to influence the operation, authenticator specific
     #[builder(default)]
     extension_data: BTreeMap<&'b str, &'b cbor_codec::value::Value>,
 }
