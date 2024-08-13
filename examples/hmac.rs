@@ -33,7 +33,7 @@ fn main() -> ctap::FidoResult<()> {
                 .rp_id(RP_ID)
                 .rp_name("ctap_hmac crate")
                 .user_name("example")
-                .uv(false)
+                .uv(true)
                 .build()
                 .unwrap();
 
@@ -61,6 +61,8 @@ fn main() -> ctap::FidoResult<()> {
     let request = FidoAssertionRequestBuilder::default()
         .rp_id(RP_ID)
         .credential(credential)
+        .uv(true)
+        // .rk(true)
         .build()
         .unwrap();
     let (_cred, (hash1, _hash2)) = device.get_hmac_assertion(&request, &salt, None)?;

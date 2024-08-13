@@ -95,6 +95,20 @@ impl Fail for FidoError {
     }
 }
 
+// impl From<ring::error::Unspecified> for FidoError {
+//     fn from(_: ring::error::Unspecified) -> Self { FidoError:: }
+// }
+
+// impl Fail for ring::error::Unspecified {
+//     fn cause(&self) -> Option<&dyn Fail> {
+//         None
+//     }
+
+//     fn backtrace(&self) -> Option<&failure::Backtrace> {
+//         None
+//     }
+// }
+
 impl Display for FidoError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(&self.0, f)

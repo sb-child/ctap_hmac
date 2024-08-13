@@ -73,6 +73,7 @@ use self::cbor::{AuthenticatorOptions, PublicKeyCredentialDescriptor};
 pub use self::error::*;
 use self::hid_linux as hid;
 use self::packet::CtapCommand;
+#[allow(unused_imports)]
 pub use self::util::*;
 use crate::cbor::{AuthenticatorData, GetAssertionRequest};
 use failure::{Fail, ResultExt};
@@ -297,15 +298,15 @@ impl FidoDevice {
             cbor::Response::GetInfo(resp) => resp,
             _ => Err(FidoErrorKind::CborDecode)?,
         };
-        if !response.versions.iter().any(|ver| ["FIDO_2_0", "FIDO_2_1_PRE"].contains(&ver.as_str())) {
+        if !response
+            .versions
+            .iter()
+            .any(|ver| ["FIDO_2_0", "FIDO_2_1_PRE"].contains(&ver.as_str()))
+        {
             Err(FidoErrorKind::DeviceUnsupported)?
         }
         // Require pin protocol version 1, only if pin-protocol is supported at all
-        if !response
-            .pin_protocols
-            .iter()
-            .any(|ver| *ver == 1) && response.pin_protocols.len() > 0
-        {
+        if !response.pin_protocols.iter().any(|ver| *ver == 1) && response.pin_protocols.len() > 0 {
             Err(FidoErrorKind::DeviceUnsupported)?
         }
         self.needs_pin = response.options.client_pin == Some(true);

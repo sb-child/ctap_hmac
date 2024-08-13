@@ -7,7 +7,6 @@
 use super::cbor::{CoseKey, P256Key};
 use super::error::*;
 use failure::ResultExt;
-use ring::error::Unspecified;
 use ring::{agreement, digest, hmac, rand, signature};
 use rust_crypto::aes;
 use rust_crypto::blockmodes::NoPadding;
@@ -25,25 +24,20 @@ impl SharedSecret {
     pub fn new(peer_key: &CoseKey) -> FidoResult<Self> {
         let rng = rand::SystemRandom::new();
         let private = agreement::EphemeralPrivateKey::generate(&agreement::ECDH_P256, &rng)
-            .context(FidoErrorKind::GenerateKey)?;
-        let public = &mut [0u8; agreement::PUBLIC_KEY_MAX_LEN][..private.public_key_len()];
-        private
-            .compute_public_key(public)
-            .context(FidoErrorKind::GenerateKey)?;
+            .map_err(|_| FidoErrorKind::GenerateKey)?;
+        let public = private
+            .compute_public_key()
+            .map_err(|_| FidoErrorKind::GenerateKey)?;
         let peer = P256Key::from_cose(peer_key)
             .context(FidoErrorKind::ParsePublic)?
             .bytes();
-        let peer = Input::from(&peer);
-        let shared_secret = agreement::agree_ephemeral(
-            private,
-            &agreement::ECDH_P256,
-            peer,
-            Unspecified,
-            |material| Ok(digest::digest(&digest::SHA256, material)),
-        )
-        .context(FidoErrorKind::GenerateSecret)?;
+        let peer = agreement::UnparsedPublicKey::new(&agreement::ECDH_P256, peer);
+        let shared_secret = agreement::agree_ephemeral(private, &peer, |material| {
+            digest::digest(&digest::SHA256, material)
+        })
+        .map_err(|_| FidoErrorKind::GenerateSecret)?;
         let mut res = SharedSecret {
-            public_key: P256Key::from_bytes(&public)
+            public_key: P256Key::from_bytes(public.as_ref())
                 .context(FidoErrorKind::ParsePublic)?
                 .to_cose(),
             shared_secret: [0; 32],
@@ -90,30 +84,29 @@ impl SharedSecret {
         let mut input = RefReadBuffer::new(data);
         // pin_token (pinUvAuthToken)
         let mut out_bytes: Vec<u8>;
-        
+
         // According to spec:
         // https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-20210615.html#pinProto1
         // "pinUvAuthToken, a random, opaque byte string that MUST be either 16 or 32 bytes long. "
-        
-        // Since this is encrypted with AES cbc with no padding, this will be the same size as the 
+
+        // Since this is encrypted with AES cbc with no padding, this will be the same size as the
         // Using a vector will allow this size to be non-static in case of further changes
         out_bytes = Vec::with_capacity(data.len());
         out_bytes.resize(data.len(), 0);
         let mut output = RefWriteBuffer::new(&mut out_bytes);
         decryptor
-             .decrypt(&mut input, &mut output, true)
-             .map_err(|_| FidoErrorKind::DecryptPin)?;
+            .decrypt(&mut input, &mut output, true)
+            .map_err(|_| FidoErrorKind::DecryptPin)?;
 
         // spec: pinUvAuthToken should be a multiple of 16 bytes (AES block length) without any padding or IV
-        if out_bytes.len() % 16 != 0
-        {
+        if out_bytes.len() % 16 != 0 {
             Err(FidoErrorKind::DecryptPin)?;
         }
-        Ok(PinToken(hmac::SigningKey::new(&digest::SHA256, &out_bytes)))
+        Ok(PinToken(hmac::Key::new(hmac::HMAC_SHA256, &out_bytes)))
     }
 }
 
-pub struct PinToken(hmac::SigningKey);
+pub struct PinToken(hmac::Key);
 
 impl PinToken {
     pub fn auth(&self, data: &[u8]) -> [u8; 16] {
@@ -137,11 +130,11 @@ pub fn verify_signature(
     msg.extend_from_slice(client_data);
     let msg = Input::from(&msg);
     let signature = Input::from(signature);
-    signature::verify(
+    let peer_public_key = signature::UnparsedPublicKey::new(
         &signature::ECDSA_P256_SHA256_ASN1,
-        public_key,
-        msg,
-        signature,
-    )
-    .is_ok()
+        public_key.as_slice_less_safe(),
+    );
+    peer_public_key
+        .verify(msg.as_slice_less_safe(), signature.as_slice_less_safe())
+        .is_ok()
 }

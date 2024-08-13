@@ -6,24 +6,24 @@ license = "Apache-2.0/MIT"
 homepage = "https://github.com/shimunn/ctap"
 repository = "https://github.com/shimunn/ctap"
 authors = ["Arda Xi <arda@ardaxi.com>", "shimun <shimun@shimun.net>"]
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 
 [dependencies]
-rand = "0.6"
+rand = "0.8"
 failure = "0.1"
 failure_derive = "0.1"
 num-traits = "0.2"
-num-derive = "0.2"
+num-derive = "0.4"
 byteorder = "1"
 cbor-codec = "0.7"
-ring = "0.13"
-untrusted = "0.6"
+ring = "0.17"
+untrusted = "0.9"
 rust-crypto = "0.2"
-derive_builder = "0.9.0"
-crossbeam = { version = "0.7.3", optional = true }
+derive_builder = "0.20.0"
+crossbeam = { version = "0.8.4", optional = true }
 [dev-dependencies]
-crossbeam = "0.7.3"
+crossbeam = "0.8.4"
 hex = "0.4.0"
 [build-dependencies]
 csv = "1.1.3"
